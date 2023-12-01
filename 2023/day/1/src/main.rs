@@ -47,19 +47,11 @@ fn part2() {
 
     for line in reader.lines() {
         let line = line.unwrap();
+        let numbers = (0..line.len()).filter_map(|i| parse_number(&line[i..]));
 
-        let mut first = None;
-        let mut last = None;
-        for i in 0..line.len() {
-            if let Some(m) = parse_number(&line[i..]) {
-                if first == None {
-                    first = Some(m);
-                }
-                last = Some(m);
-            }
-        }
+        let first = numbers.clone().next();
+        let last = numbers.last();
 
-        println!("<< {line} >> {first:?} {last:?}");
         sum += first.unwrap() * 10 + last.unwrap();
     }
 
