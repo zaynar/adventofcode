@@ -1,4 +1,4 @@
-use std::fs;
+use std::{fs, collections::HashMap};
 
 use pest::Parser;
 use pest_derive::Parser;
@@ -12,6 +12,7 @@ fn main() {
     let parse = GameParser::parse(Rule::file, &file).unwrap().next().unwrap();
 
     let mut answer = 0;
+    let mut answer2 = 0;
 
     for record in parse.into_inner() {
         match record.as_rule() {
@@ -23,6 +24,8 @@ fn main() {
                 println!("Game {:?}", id);
 
                 let mut possible = true;
+                let mut maxes = HashMap::new();
+
                 for set in sets.into_inner() {
                     println!("  {:?}", set.as_str());
                     for cubes in set.into_inner() {
@@ -41,8 +44,16 @@ fn main() {
                         if count > limit {
                             possible = false;
                         }
+
+                        maxes.insert(colour, u32::max(count, maxes.get(colour).copied().unwrap_or(0)));
                     }
                 }
+
+                let mut power = 1;
+                for max in maxes.values() {
+                    power *= max;
+                }
+                answer2 += power;
 
                 if possible {
                     answer += id;
@@ -54,4 +65,5 @@ fn main() {
     }
 
     println!("Answer: {}", answer);
+    println!("Answer: {}", answer2);
 }
