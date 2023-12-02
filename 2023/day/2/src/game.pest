@@ -1,0 +1,23 @@
+number = {
+    ASCII_DIGIT+
+}
+
+color = { "red" | "green" | "blue" }
+
+file = { SOI ~ (record ~ "\n")* ~ EOI }
+
+record = {
+    "Game " ~ number ~ ": " ~ sets
+}
+
+sets = {
+    set ~ ("; " ~ set)*
+}
+
+set = {
+    cubes ~ (", " ~ cubes)*
+}
+
+cubes = {
+    number ~ " " ~ color
+}
