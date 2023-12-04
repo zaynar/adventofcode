@@ -1,0 +1,10 @@
+use std::str::FromStr;
+use crate::ast;
+
+grammar;
+
+pub Card: ast::Card = {
+    "Card" <id:Num> ":" <winning:Num*> "|" <chosen:Num*> => ast::Card { id, winning, chosen }
+};
+
+Num: u32 = <s:r"[0-9]+"> => u32::from_str(s).unwrap();
