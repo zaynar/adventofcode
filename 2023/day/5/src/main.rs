@@ -1,4 +1,5 @@
 use std::fs;
+use rayon::prelude::*;
 
 #[derive(Debug)]
 struct Range {
@@ -54,13 +55,12 @@ pub fn main() {
     }
     println!("Answer: {}", locs.iter().min().unwrap());
 
+    let mut min_min_loc = u64::MAX;
     for pair in input.seeds.chunks_exact(2) {
         let start = pair[0];
         let len = pair[1];
 
-        let mut min_loc = u64::MAX;
-
-        for seed in start..start+len {
+        let min_loc = (start..start+len).into_par_iter().map(|seed| {
             let mut val = seed;
             for map in &input.maps {
                 for range in map {
@@ -70,8 +70,11 @@ pub fn main() {
                     }
                 }
             }
-            min_loc = min_loc.min(val);
-        }
+            val
+        }).min().unwrap();
+
         println!("{} {} {}", start, len, min_loc);
+        min_min_loc = min_min_loc.min(min_loc);
     }
+    println!("Answer: {}", min_min_loc);
 }
