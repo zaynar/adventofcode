@@ -1,4 +1,4 @@
-use std::{fs, collections::HashMap, cmp::Ordering};
+use std::{cmp::Ordering, collections::HashMap, fs};
 
 use itertools::Itertools;
 
@@ -52,12 +52,16 @@ fn hand_type(cards: &Vec<u32>) -> Type {
 }
 
 fn best_hand_type(cards: &Vec<u32>) -> Type {
-    cards.iter().map(|c|
-        match c {
+    cards
+        .iter()
+        .map(|c| match c {
             0 => (2..=13).collect_vec(),
             &x => vec![x],
-        }
-    ).multi_cartesian_product().map(|cs| hand_type(&cs)).max().unwrap()
+        })
+        .multi_cartesian_product()
+        .map(|cs| hand_type(&cs))
+        .max()
+        .unwrap()
 }
 
 fn parse_card1(c: char) -> u32 {
@@ -87,20 +91,32 @@ fn parse_card2(c: char) -> u32 {
 fn parse1(line: &str) -> Line {
     let cards = line[0..5].chars().map(parse_card1).collect();
     let bid = line[6..].parse().unwrap();
-    Line { ty: hand_type(&cards), cards, bid }
+    Line {
+        ty: hand_type(&cards),
+        cards,
+        bid,
+    }
 }
 
 fn parse2(line: &str) -> Line {
     let cards = line[0..5].chars().map(parse_card2).collect();
     let bid = line[6..].parse().unwrap();
-    Line { ty: best_hand_type(&cards), cards, bid }
+    Line {
+        ty: best_hand_type(&cards),
+        cards,
+        bid,
+    }
 }
 
 fn main() {
     let file = fs::read_to_string("input").unwrap();
     let mut lines: Vec<_> = file.lines().map(parse1).collect();
     lines.sort_by(compare);
-    let answer1: u32 = lines.iter().enumerate().map(|(i, line)| (i as u32 + 1) * line.bid).sum();
+    let answer1: u32 = lines
+        .iter()
+        .enumerate()
+        .map(|(i, line)| (i as u32 + 1) * line.bid)
+        .sum();
     println!("{}", answer1);
 
     let file = fs::read_to_string("input").unwrap();
@@ -108,6 +124,10 @@ fn main() {
     // println!("{:?}", lines);
     lines.sort_by(compare);
     // println!("{:?}", lines);
-    let answer2: u32 = lines.iter().enumerate().map(|(i, line)| (i as u32 + 1) * line.bid).sum();
+    let answer2: u32 = lines
+        .iter()
+        .enumerate()
+        .map(|(i, line)| (i as u32 + 1) * line.bid)
+        .sum();
     println!("{}", answer2);
 }
