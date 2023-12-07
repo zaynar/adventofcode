@@ -32,22 +32,15 @@ fn hand_type(cards: &Vec<u32>) -> Type {
     let mut cs: Vec<_> = counts.values().copied().collect();
     cs.sort();
 
-    if cs == vec![5] {
-        Type::Five
-    } else if cs == vec![1, 4] {
-        Type::Four
-    } else if cs == vec![2, 3] {
-        Type::Full
-    } else if cs == vec![1, 1, 3] {
-        Type::Three
-    } else if cs == vec![1, 2, 2] {
-        Type::Two
-    } else if cs == vec![1, 1, 1, 2] {
-        Type::One
-    } else if cs == vec![1, 1, 1, 1, 1] {
-        Type::High
-    } else {
-        unreachable!();
+    match cs.as_slice() {
+        [5] => Type::Five,
+        [1, 4] => Type::Four,
+        [2, 3] => Type::Full,
+        [1, 1, 3] => Type::Three,
+        [1, 2, 2] => Type::Two,
+        [1, 1, 1, 2] => Type::One,
+        [1, 1, 1, 1, 1] => Type::High,
+        _ => unreachable!(),
     }
 }
 
