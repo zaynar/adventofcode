@@ -5,7 +5,7 @@ fn part1(vals: Vec<i32>) -> i32 {
         return 0;
     }
 
-    let newvals: Vec<_> = vals.iter().zip(vals[1..].iter()).map(|(a, b)| b - a).collect();
+    let newvals: Vec<_> = vals.windows(2).map(|v| v[1] - v[0]).collect();
     println!(" {:?}", newvals);
     return vals.last().unwrap() + part1(newvals);
 }
