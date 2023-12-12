@@ -1,5 +1,6 @@
-use std::fs;
+use std::{fs, collections::HashMap};
 use rayon::prelude::*;
+use std::sync::atomic::AtomicUsize;
 
 #[derive(Debug, Clone)]
 struct Record {
@@ -53,7 +54,14 @@ enum Spring {
 //     return true;
 // }
 
-fn is_maybe_valid(record: &Record) -> bool {
+#[derive(Clone, PartialEq, Eq, Hash)]
+struct ValidState {
+    i: usize,
+    g: usize,
+    start: Option<usize>,
+}
+
+fn is_maybe_valid(record: &Record, state: &mut ValidState) -> bool {
 
     assert!(record.springs_damaged + record.springs_operational + record.springs_unknown == record.springs.len());
     if record.springs_damaged > record.counts_damaged {
@@ -63,67 +71,75 @@ fn is_maybe_valid(record: &Record) -> bool {
         return false;
     }
 
-    let mut g = 0;
-    let mut start = None;
-    for (i, &s) in record.springs.iter().enumerate() {
+    // let mut g = 0;
+    // let mut start = None;
+    for (i, &s) in record.springs.iter().enumerate().skip(state.i) {
+        state.i = i;
         if s == Spring::Unknown {
             return true;
         }
-        if s == Spring::Operational && start.is_some() {
-            if record.counts.get(g).copied() != Some(i - start.unwrap()) {
+        if s == Spring::Operational && state.start.is_some() {
+            if record.counts.get(state.g).copied() != Some(i - state.start.unwrap()) {
                 return false;
             }
-            g += 1;
-            start = None;
-        } else if s == Spring::Damaged && start.is_none() {
-            start = Some(i);
+            state.g += 1;
+            state.start = None;
+        } else if s == Spring::Damaged && state.start.is_none() {
+            state.start = Some(i);
         }
     }
-    if start.is_some() {
-        if record.counts.get(g).copied() != Some(record.springs.len() - start.unwrap()) {
+    if state.start.is_some() {
+        if record.counts.get(state.g).copied() != Some(record.springs.len() - state.start.unwrap()) {
             return false;
         }
-        g += 1;
+        state.g += 1;
     }
-    if g != record.counts.len() {
+    if state.g != record.counts.len() {
         return false;
     }
     // println!("{:?} {:?}", groups, record.counts);
     return true;
 }
 
-fn expand(record: &mut Record) -> usize {
+// Memoise based on (next_unkown, state)
+
+fn expand(record: &mut Record, state: &mut ValidState, memo: &mut HashMap<(usize, ValidState), usize>) -> usize {
     // println!("-{:?}", record);
-    if !is_maybe_valid(record) {
+    let mut state = state.clone();
+    if !is_maybe_valid(record, &mut state) {
         return 0;
     }
 
-    let unk = record.springs.iter().position(|&s| s == Spring::Unknown);
+    if record.springs_unknown == 0 {
+        return 1;
+    }
+
+    let unk = record.springs.iter().position(|&s| s == Spring::Unknown).unwrap();
+
+    let memo_key = (unk, state.clone());
+    let memo_entry = memo.get(&memo_key);
+    if let Some(&count) = memo_entry {
+        return count;
+    }
+
     let mut count = 0;
     // println!("#{:?}", unk);
-    match unk {
-        Some(p) => {
-            record.springs[p] = Spring::Damaged;
-            record.springs_unknown -= 1;
-            record.springs_damaged += 1;
-            count += expand(record);
-            record.springs[p] = Spring::Operational;
-            record.springs_damaged -= 1;
-            record.springs_operational += 1;
-            count += expand(record);
-            record.springs[p] = Spring::Unknown;
-            record.springs_operational -= 1;
-            record.springs_unknown += 1;
-        },
-        None => {
-            assert!(record.springs_unknown == 0);
-            // let valid = is_valid(&record);
-            // if valid {
-                count += 1;
-            // }
-            // println!(" {:?} {}", record, valid);
-        }
-    }
+
+    let p = unk;
+    record.springs[p] = Spring::Damaged;
+    record.springs_unknown -= 1;
+    record.springs_damaged += 1;
+    count += expand(record, &mut state, memo);
+    record.springs[p] = Spring::Operational;
+    record.springs_damaged -= 1;
+    record.springs_operational += 1;
+    count += expand(record, &mut state, memo);
+    record.springs[p] = Spring::Unknown;
+    record.springs_operational -= 1;
+    record.springs_unknown += 1;
+
+    memo.insert(memo_key, count);
+
     count
 }
 
@@ -164,9 +180,12 @@ fn main() {
         }
     }).collect();
 
+    let status = AtomicUsize::new(0);
     let sum: usize = records.par_iter_mut().map(|mut record| {
-        let count = expand(&mut record);
-        println!("{:?} {}", record, count);
+        let mut memo = HashMap::new();
+        let mut state = ValidState { i: 0, g: 0, start: None };
+        let count = expand(&mut record, &mut state, &mut memo);
+        println!("<<<{}>>> {:?} {}", status.fetch_add(1, std::sync::atomic::Ordering::SeqCst), record, count);
         count
         // break;
     }).sum();
