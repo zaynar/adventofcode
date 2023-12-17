@@ -8,7 +8,7 @@ struct Node {
     step_dir: (isize, isize),
 }
 
-fn neighbours(n: &Node, gw: isize, gh: isize) -> Vec<Node> {
+fn neighbours_part1(n: &Node, gw: isize, gh: isize) -> Vec<Node> {
     let mut ps = Vec::new();
     if n.x > 0 {
         ps.push((n.x-1, n.y));
@@ -42,6 +42,44 @@ fn neighbours(n: &Node, gw: isize, gh: isize) -> Vec<Node> {
     ns
 }
 
+fn neighbours(n: &Node, gw: isize, gh: isize) -> Vec<Node> {
+    let mut ps = Vec::new();
+    if n.x > 0 {
+        ps.push((n.x-1, n.y));
+    }
+    if n.x < gw-1 {
+        ps.push((n.x+1, n.y));
+    }
+    if n.y > 0 {
+        ps.push((n.x, n.y-1));
+    }
+    if n.y < gh-1 {
+        ps.push((n.x, n.y+1));
+    }
+
+    let mut ns = Vec::new();
+    for (x, y) in ps {
+        let d = (x - n.x, y - n.y);
+        if d == n.step_dir {
+            if n.steps + 1 < 11 {
+                ns.push(Node { x, y, steps: n.steps + 1, step_dir: n.step_dir });
+            } else {
+                // too long, not allowed
+            }
+        } else if d.0 == -n.step_dir.0 && d.1 == -n.step_dir.1 {
+            // reversing not allowed
+        } else {
+            if n.steps != 0 && n.steps < 4 {
+                // too short, not allowed
+            } else {
+                ns.push(Node { x, y, steps: 1, step_dir: d });
+            }
+        }
+    }
+
+    ns
+}
+
 fn main() {
     let grid: Vec<Vec<u32>> = fs::read_to_string("input")
         .unwrap()
@@ -67,8 +105,10 @@ fn main() {
 
     while let Some((udist, unode)) = Q.pop() {
         // println!("{:?} {:?}", udist, unode);
-        if unode.x == gw-1 && unode.y == gh-1 {
-            println!("Answer: {}", udist.0);
+        if unode.x == gw-1 && unode.y == gh-1
+            && unode.steps >= 4 // part 2 only
+        {
+            println!("Answer: {} {:?}", udist.0, unode);
             break;
         }
 
