@@ -39,18 +39,21 @@ peg::parser! {
     }
 }
 
-fn init<'a>(modules: &'a mut HashMap<&'a str, Module<'_>>) {
+fn init<'a>(modules: &mut HashMap<&'a str, Module<'a>>) {
     for m in modules.clone().values() {
         for d in &m.dests {
-            let dm = modules.get_mut(d).unwrap();
-            if let ModuleType::Conjunction(ins) = &mut dm.ty {
-                ins.insert(m.name, false);
+            if let Some(dm) = modules.get_mut(d) {
+                if let ModuleType::Conjunction(ins) = &mut dm.ty {
+                    ins.insert(m.name, false);
+                }
+            } else {
+                println!("Undefined {}", d);
             }
         }
     }
 }
 
-fn press(modules: &mut HashMap<&str, Module<'_>>, low: &mut u32, high: &mut u32) {
+fn press(modules: &mut HashMap<&str, Module<'_>>, low: &mut u32, high: &mut u32, i: u32) -> bool {
     let mut pulses = VecDeque::new();
     pulses.push_back(("button", "broadcaster", false));
 
@@ -61,6 +64,17 @@ fn press(modules: &mut HashMap<&str, Module<'_>>, low: &mut u32, high: &mut u32)
             *high += 1;
         } else {
             *low += 1;
+        }
+
+        if pulse == false && dst == "rx" {
+            return true;
+        }
+
+        // Relevant nodes determined by looking at Graphviz
+        if (dst == "gs" || dst == "vg" || dst == "kd" || dst == "zf") && pulse == false {
+            println!("{} {}", dst, i + 1);
+            // This finds the period of each binary-counter subgraph.
+            // To solve the puzzle, manually calculate the LCM of each period
         }
 
         if let Some(m) = modules.get_mut(dst) {
@@ -81,6 +95,8 @@ fn press(modules: &mut HashMap<&str, Module<'_>>, low: &mut u32, high: &mut u32)
             }
         }
     }
+
+    return false;
 }
 
 fn main() {
@@ -88,25 +104,25 @@ fn main() {
     let input = input_parser::file(&file).unwrap();
 
     let mut modules = HashMap::from_iter(input.iter().map(|m| (m.name, m.clone())));
-    // init(&mut modules);
+    init(&mut modules);
 
-    for m in modules.clone().values() {
-        for d in &m.dests {
-            if let Some(dm) = modules.get_mut(d) {
-                if let ModuleType::Conjunction(ins) = &mut dm.ty {
-                    ins.insert(m.name, false);
-                }
-            } else {
-                println!("Undefined {}", d);
-            }
-        }
-    }
     println!("{:?}", modules);
 
     let mut low = 0;
     let mut high = 0;
-    for i in 0..1000 {
-        press(&mut modules, &mut low, &mut high);
+    // for i in 0..1000 {
+    //     press(&mut modules, &mut low, &mut high);
+    // }
+    // println!("Answer 1: {} * {} = {}", low, high, low * high);
+
+    for i in 0..1000000000 {
+        if press(&mut modules, &mut low, &mut high, i) {
+            println!("Answer 2: {}", i);
+            break;
+        }
+
+        if i % 100000 == 0 {
+            println!("{}...", i);
+        }
     }
-    println!("Answer 1: {} * {} = {}", low, high, low * high);
 }
