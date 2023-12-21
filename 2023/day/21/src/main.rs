@@ -36,49 +36,80 @@ fn get_cell2(x: isize, y: isize, w: isize, h: isize, v: &Vec<Vec<bool>>) -> bool
 #[derive(Hash, PartialEq, Eq, Clone)]
 struct Area {
     level: u32, // 0 = contains chunks, else contains areas
+    sum: u64,
     sub: [u32; 9]
 }
 
 struct Areas {
+    plots: Vec<Vec<bool>>,
+    w: usize,
+    h: usize,
+
     area_by_id: Vec<Area>,
     area_ids: HashMap<Area, u32>,
     area_top: u32,
     area_top_empty: u32,
     max_level: u32,
 
-    progression: HashMap<(usize, u32), u32>,
+    progression: HashMap<(usize, u32, [u32; 9]), u32>,
+
+    chunk_by_id: Vec<ChunkState>,
+    chunk_ids: HashMap<ChunkState, u32>,
 }
 
+const CHUNK_ID: u32 = 0;
+
 impl Areas {
-    fn new() -> Self {
+    fn new(plots: Vec<Vec<bool>>, start: (usize, usize)) -> Self {
         let area_by_id = Vec::new();
         let area_ids = HashMap::new();
         let progression = HashMap::new();
 
-        let mut this = Self { area_by_id, area_ids,
-            max_level: 24,
-            area_top: 0, area_top_empty: 0, progression };
+        let mut chunk_by_id: Vec<ChunkState> = Vec::new();
+        let mut chunk_ids: HashMap<ChunkState, u32> = HashMap::new();
+        // let mut chunks: HashMap<(i32, i32), u32> = HashMap::new();
 
-        let empty_chunk = 0;
-        let start_chunk = 1;
+        let w = plots[0].len();
+        let h = plots.len();
 
-        let mut empty = this.add_area(Area { level: 0, sub: [
+        let empty_chunk = ChunkState { visited: plots.iter().map(|row| row.iter().map(|c| false).collect()).collect(), count: 0 };
+
+        let mut start_chunk = empty_chunk.clone();
+        start_chunk.visited[start.1][start.0] = true;
+        start_chunk.count = 1;
+
+        chunk_by_id.push(empty_chunk.clone());
+        chunk_ids.insert(empty_chunk.clone(), 0 + CHUNK_ID);
+        chunk_by_id.push(start_chunk.clone());
+        chunk_ids.insert(start_chunk, 1 + CHUNK_ID);
+
+        let empty_chunk = 0 + CHUNK_ID;
+        let start_chunk = 1 + CHUNK_ID;
+
+
+        let mut this = Self { plots, w, h, area_by_id, area_ids,
+            max_level: 12,
+            area_top: 0, area_top_empty: 0, progression,
+            chunk_by_id, chunk_ids
+         };
+
+        let mut empty = this.add_area(Area { level: 0, sum: 0, sub: [
             empty_chunk, empty_chunk, empty_chunk,
             empty_chunk, empty_chunk, empty_chunk,
             empty_chunk, empty_chunk, empty_chunk
         ]});
-        let mut area = this.add_area(Area { level: 0, sub: [
+        let mut area = this.add_area(Area { level: 0, sum: 1, sub: [
             empty_chunk, empty_chunk, empty_chunk,
             empty_chunk, start_chunk, empty_chunk,
             empty_chunk, empty_chunk, empty_chunk
         ]});
         for level in 1..this.max_level {
-            area = this.add_area(Area { level, sub: [
+            area = this.add_area(Area { level, sum: 1, sub: [
                 empty, empty, empty,
                 empty, area, empty,
                 empty, empty, empty,
             ]});
-            empty = this.add_area(Area { level, sub: [
+            empty = this.add_area(Area { level, sum: 0, sub: [
                 empty, empty, empty,
                 empty, empty, empty,
                 empty, empty, empty,
@@ -101,7 +132,7 @@ impl Areas {
     }
 
     fn update_top(&mut self, steps: usize) {
-        self.area_top = self.update(self.max_level,
+        self.area_top = self.update_mid(self.max_level,
             &[
                 self.area_top_empty, self.area_top_empty, self.area_top_empty,
                 self.area_top_empty, self.area_top,       self.area_top_empty,
@@ -109,19 +140,99 @@ impl Areas {
             ], steps);
     }
 
-    // Calculate new ID for middle area
-    fn update(&mut self, level: u32, areas: &[u32; 9], steps: usize) -> u32 {
-        println!("Updating level {}, {:?}", level, areas);
+    fn sum(&self) -> u64 {
+        self.area_by_id[self.area_top as usize].sum
+    }
 
-        if let Some(&id) = self.progression.get(&(steps, areas[4])) {
+    // Calculate new ID for middle area
+    fn update_mid(&mut self, level: u32, areas: &[u32; 9], steps: usize) -> u32 {
+        // println!("Updating level {}, {:?}", level, areas);
+
+        if let Some(&id) = self.progression.get(&(steps, level, *areas)) {
+            // println!("Cached {}", id);
             return id;
         }
 
         let id = if level == 0 {
-            todo!("chunks")
+
+            // Create a new chunk based on areas
+            // println!("Updating chunks {:?}", areas);
+
+            let v: Vec<_> = areas.iter().map(|&id| &self.chunk_by_id[(id - CHUNK_ID) as usize].visited).collect();
+
+            let mut visited = Vec::from_iter((0..self.h*3).map(|_| Vec::from_iter((0..self.w*3).map(|_| false))));
+            for y in 0..self.h*3 {
+                for x in 0..self.w*3 {
+                    let ix = x as isize;
+                    let iy = y as isize;
+                    let w = self.w as isize;
+                    let h = self.h as isize;
+                    visited[y][x] = get_cell(ix, iy, w, h, &v);
+                }
+            }
+
+            for i in 0..steps {
+                let oldv = visited.clone();
+                for y in 0..self.h*3 {
+                    for x in 0..self.w*3 {
+                        let ix = x as isize;
+                        let iy = y as isize;
+                        let iw = self.w as isize;
+                        let ih = self.h as isize;
+                        visited[y][x] = self.plots[y % self.h][x % self.w] && (
+                            get_cell2(ix-1, iy, iw, ih, &oldv) ||
+                            get_cell2(ix+1, iy, iw, ih, &oldv) ||
+                            get_cell2(ix, iy-1, iw, ih, &oldv) ||
+                            get_cell2(ix, iy+1, iw, ih, &oldv)
+                        );
+                    }
+                }
+            }
+
+            let mut new_chunk = ChunkState {
+                count: usize::MAX,
+                visited: Vec::from_iter((0..self.h).map(|y| Vec::from_iter((0..self.w).map(|x|
+                    visited[y + self.h][x + self.w]
+                ))))
+            };
+            new_chunk.count = new_chunk.visited.iter().map(|row| row.iter().filter(|c| **c).count()).sum();
+            let c = new_chunk.count;
+
+            let id = *self.chunk_ids.entry(new_chunk.clone()).or_insert_with(|| {
+                let id = self.chunk_by_id.len() as u32 + CHUNK_ID;
+                self.chunk_by_id.push(new_chunk);
+                id
+            });
+            // println!(" = {} ({})", id, c);
+            id
+
         } else {
+            // println!("Updating area mid {:?} lv {}", areas, level);
+
             let mut area = self.area_by_id[areas[4] as usize].clone();
-            area.sub[4] = self.update(level - 1, &area.sub, steps);
+
+            // XXX: update all subs
+            // area.sub[4] = self.update_mid(level - 1, &area.sub, steps);
+
+            // println!(" <sub = {:?}", area.sub);
+            area.sub = [
+                self.update_mid(level - 1, &self.get_subs(0, 0, &areas), steps),
+                self.update_mid(level - 1, &self.get_subs(1, 0, &areas), steps),
+                self.update_mid(level - 1, &self.get_subs(2, 0, &areas), steps),
+                self.update_mid(level - 1, &self.get_subs(0, 1, &areas), steps),
+                self.update_mid(level - 1, &self.get_subs(1, 1, &areas), steps),
+                self.update_mid(level - 1, &self.get_subs(2, 1, &areas), steps),
+                self.update_mid(level - 1, &self.get_subs(0, 2, &areas), steps),
+                self.update_mid(level - 1, &self.get_subs(1, 2, &areas), steps),
+                self.update_mid(level - 1, &self.get_subs(2, 2, &areas), steps),
+            ];
+            // println!(" >sub = {:?}", area.sub);
+
+            if level == 1 {
+                area.sum = area.sub.iter().map(|&a| self.chunk_by_id[(a - CHUNK_ID) as usize].count as u64).sum();
+            } else {
+                area.sum = area.sub.iter().map(|&a| self.area_by_id[a as usize].sum).sum();
+            }
 
             *self.area_ids.entry(area.clone()).or_insert_with(|| {
                 let id = self.area_by_id.len() as u32;
@@ -130,10 +241,32 @@ impl Areas {
             })
         };
 
-        self.progression.insert((steps, areas[4]), id);
+        self.progression.insert((steps, level, *areas), id);
         id
     }
+
+    fn get_subs(&self, x: u32, y: u32, areas: &[u32; 9]) -> [u32; 9] {
+        let mut s: [&Area; 9] = areas.map(|a| &self.area_by_id[a as usize]);
+        // x,y = 0..3
+
+        (-1..=1).map(|dy| (-1..=1).map(|dx| {
+            let cx = (x as i32 + 3 + dx);
+            let cy = (y as i32 + 3 + dy);
+            let ix = cx / 3;
+            let iy = cy / 3;
+            let dx = (cx + 3) % 3;
+            let dy = (cy + 3) % 3;
+            // println!("{} {} - {} {}, {} {}, {} {}", x, y, cx, cy, ix, iy, dx, dy);
+            if ix < 0 || iy < 0 || ix >= 3 || iy >= 3 {
+                0
+            } else {
+                // println!("  [{}]", s[(ix + iy*3) as usize].sub[(dx + dy*3) as usize]);
+                s[(ix + iy*3) as usize].sub[(dx + dy*3) as usize]
+            }
+        }).collect::<Vec<_>>()).flatten().collect::<Vec<_>>().try_into().unwrap()
+    }
 }
+
 
 /*
  Areas are 3x3 sub-areas
@@ -147,7 +280,7 @@ To calculate level N:
 fn main() {
     let mut start = OnceCell::new();
     let s = &mut start;
-    let file = fs::read_to_string("input-demo").unwrap();
+    let file = fs::read_to_string("input").unwrap();
     let plots: Vec<Vec<bool>> = file.lines().enumerate().map(|(y, line)| {
         if let Some(x) = line.find("S") {
             start.set((x, y)).unwrap();
@@ -159,178 +292,28 @@ fn main() {
     // println!("{:?}", visited);
     // println!("{:?}", visited.iter().map(|row| row.iter().filter(|c| **c).count()).sum::<usize>());
 
-    let mut chunk_by_id: Vec<ChunkState> = Vec::new();
-    let mut chunk_ids: HashMap<ChunkState, u32> = HashMap::new();
-    let mut chunks: HashMap<(i32, i32), u32> = HashMap::new();
-    let mut chunk_progression: HashMap<(usize, [u32; 9]), u32> = HashMap::new();
-    let mut chunk_history: HashMap<(i32, i32), Vec<u32>> = HashMap::new();
-    let mut chunks_cyclic: HashMap<(i32, i32), u32> = HashMap::new();
+    let big_steps = plots.len();
+    let mut areas = Areas::new(plots, *start.get().unwrap());
 
-    let w = plots[0].len();
-    let h = plots.len();
-
-    let empty = ChunkState { visited: plots.iter().map(|row| row.iter().map(|c| false).collect()).collect(), count: 0 };
-
-    let start = start.get().unwrap();
-    let mut start_chunk = empty.clone();
-    start_chunk.visited[start.1][start.0] = true;
-    start_chunk.count = 1;
-
-    chunk_by_id.push(empty.clone());
-    chunk_ids.insert(empty.clone(), 0);
-    chunk_by_id.push(start_chunk.clone());
-    chunk_ids.insert(start_chunk, 1);
-    chunks.insert((0, 0), 1);
-
-    let mut areas = Areas::new();
-
-    // let mut area_by_id: Vec<Area> = Vec::new();
-    // let mut area_ids: HashMap<Area, u32> = HashMap::new();
-    // let max_levels = 22;
-    // {
-    //     let mut p = 0;
-    //     for i in 0..max_levels {
-    //         let area = Area { level: i, sub: [p, p, p, p] };
-    //         let id = area_by_id.len() as u32;
-    //         area_ids.insert(area.clone(), id);
-    //         area_by_id.push(area);
-    //         p = id;
-    //     }
-    // }
-
-    // let mut area = update_area(0,  &mut area_ids, &area_by_id);
-
-    // let mut hist = Vec::new();
     let mut i = 0;
     while i < 26501365 {
         if [6, 10, 50, 100, 500, 1000, 5000, 26501365].contains(&i) {
-            let sum: usize = chunks.values().chain(chunks_cyclic.values()).map(|&c|
-                chunk_by_id.get(c as usize).unwrap().count
-            ).sum();
-            println!("{}: {:?}", i, sum);
+            println!("{}: {:?}", i, areas.sum());
         }
         if i % 100 == 0 {
-            println!("...{} {} {} {}", i, chunks.len(), chunk_by_id.len(), chunks_cyclic.len());
+            println!("...{} {} {} {}", i, areas.sum(), areas.area_by_id.len(), areas.chunk_by_id.len());
         }
 
-        // if (5000 - i) % 131 == 0 {
-        //     let sum: usize = chunks.values().chain(chunks_cyclic.values()).map(|&c|
-        //         chunk_by_id.get(c as usize).unwrap().count
-        //     ).sum();
-        //     println!("# {}: {:?}", i, sum);
-        //     hist.push(sum as isize);
-        //     let hl = hist.len();
-        //     if hl > 3 {
-        //         println!("## {} {}", hist[hl-1]-hist[hl-2], (hist[hl-1]-hist[hl-2])-(hist[hl-2]-hist[hl-3]));
-        //     }
-        // }
-
-        let big_steps = plots.len();
         // assert!(big_steps < plots.len());
-        let steps = if i < 1000 || (5000 - i) % big_steps != 0 { 1 } else { big_steps };
-        // let steps = 1;
+        // let steps = if i < 1000 || (26501365 - i) % big_steps != 0 { 1 } else { big_steps };
+        let steps = if (26501365 - i) % big_steps != 0 { 1 } else { big_steps };
+        // let steps = 11;
 
         areas.update_top(steps);
-
-        let old_chunks = chunks.clone();
-        let mut expand = HashSet::new();
-        let mut remove = HashSet::new();
-        for (&(cx, cy), chunk) in chunks.iter_mut() {
-            let cn = [
-                old_chunks.get(&(cx-1, cy-1)).copied().unwrap_or(0),
-                old_chunks.get(&(cx  , cy-1)).copied().unwrap_or(0),
-                old_chunks.get(&(cx+1, cy-1)).copied().unwrap_or(0),
-                old_chunks.get(&(cx-1, cy  )).copied().unwrap_or(0),
-                old_chunks.get(&(cx  , cy  )).copied().unwrap_or(0),
-                old_chunks.get(&(cx+1, cy  )).copied().unwrap_or(0),
-                old_chunks.get(&(cx-1, cy+1)).copied().unwrap_or(0),
-                old_chunks.get(&(cx  , cy+1)).copied().unwrap_or(0),
-                old_chunks.get(&(cx+1, cy+1)).copied().unwrap_or(0),
-            ];
-
-            *chunk = *chunk_progression.entry((steps, cn)).or_insert_with(|| {
-                let v: Vec<_> = cn.iter().map(|&c| &chunk_by_id[c as usize].visited).collect();
-
-                let mut visited = Vec::from_iter((0..h*3).map(|_| Vec::from_iter((0..w*3).map(|_| false))));
-                for y in 0..h*3 {
-                    for x in 0..w*3 {
-                        let ix = x as isize;
-                        let iy = y as isize;
-                        let w = w as isize;
-                        let h = h as isize;
-                        visited[y][x] = get_cell(ix, iy, w, h, &v);
-                    }
-                }
-
-                for i in 0..steps {
-                    let oldv = visited.clone();
-                    for y in 0..h*3 {
-                        for x in 0..w*3 {
-                            let ix = x as isize;
-                            let iy = y as isize;
-                            let iw = w as isize;
-                            let ih = h as isize;
-                            visited[y][x] = plots[y % h][x % w] && (
-                                get_cell2(ix-1, iy, iw, ih, &oldv) ||
-                                get_cell2(ix+1, iy, iw, ih, &oldv) ||
-                                get_cell2(ix, iy-1, iw, ih, &oldv) ||
-                                get_cell2(ix, iy+1, iw, ih, &oldv)
-                            );
-                        }
-                    }
-                }
-                let mut new_chunk = empty.clone();
-                for y in 0..h {
-                    for x in 0..w {
-                        new_chunk.visited[y][x] = visited[y + h][x + w];
-                    }
-                }
-                new_chunk.count = new_chunk.visited.iter().map(|row| row.iter().filter(|c| **c).count()).sum();
-
-                *chunk_ids.entry(new_chunk.clone()).or_insert_with(|| {
-                    let id = chunk_by_id.len() as u32;
-                    chunk_by_id.push(new_chunk);
-                    id
-                })
-            });
-
-            if *chunk != 0 {
-                if cn[0] == 0 { expand.insert((cx-1, cy-1)); }
-                if cn[1] == 0 { expand.insert((cx  , cy-1)); }
-                if cn[2] == 0 { expand.insert((cx+1, cy-1)); }
-                if cn[3] == 0 { expand.insert((cx-1, cy  )); }
-
-                if cn[5] == 0 { expand.insert((cx+1, cy  )); }
-                if cn[6] == 0 { expand.insert((cx-1, cy+1)); }
-                if cn[7] == 0 { expand.insert((cx  , cy-1)); }
-                if cn[8] == 0 { expand.insert((cx+1, cy+1)); }
-            }
-
-            let hist = chunk_history.entry((cx, cy)).or_insert_with(|| Vec::new());
-            hist.push(*chunk);
-            let hl = hist.len();
-            if i % 2 == 1 && *chunk != 0 && hl > 2 && (0..1).all(|i| hist[hl-2*i-1] == hist[hl-2*i-3]) {
-                remove.insert((cx, cy));
-            }
-        }
-
-        for (cx, cy) in expand {
-            if !chunks_cyclic.contains_key(&(cx, cy)) {
-                chunks.entry((cx, cy)).or_insert(0);
-            }
-        }
-
-        for (cx, cy) in remove {
-            chunks_cyclic.insert((cx, cy), chunks.remove(&(cx, cy)).unwrap());
-            chunk_history.remove(&(cx, cy));
-        }
 
         i += steps;
     }
 
-    let sum: usize = chunks.values().chain(chunks_cyclic.values()).map(|&c|
-        chunk_by_id.get(c as usize).unwrap().count
-    ).sum();
-    println!("{:?}", sum);
+    println!("{:?}", areas.sum());
     // println!("{:?}", visited.iter().map(|row| row.iter().filter(|c| **c).count()).sum::<usize>());
 }
