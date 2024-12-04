@@ -157,10 +157,17 @@ version = "0.1.0"
 [[package]]
 name = "day21"
 version = "0.1.0"
+dependencies = [
+ "itertools",
+]
 
 [[package]]
 name = "day22"
 version = "0.1.0"
+dependencies = [
+ "itertools",
+ "peg",
+]
 
 [[package]]
 name = "day23"
