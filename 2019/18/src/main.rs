@@ -1,5 +1,5 @@
 use core::panic;
-use std::collections::{BTreeSet, BinaryHeap, HashMap, HashSet, VecDeque};
+use std::{collections::{BTreeSet, BinaryHeap, HashMap, HashSet, VecDeque}, time};
 
 use itertools::Itertools;
 
@@ -225,6 +225,8 @@ fn run2(title: &str, input: &str) {
         steps: 0,
     });
 
+    let t0 = time::Instant::now();
+
     while let Some(state) = open.pop() {
         // println!("{:?}", state);
 
@@ -269,8 +271,19 @@ fn run2(title: &str, input: &str) {
         }
     }
 
+    println!("-- computed in {} msec", (time::Instant::now() - t0).as_millis());
+
+    let t0 = time::Instant::now();
     println!("@ {}", added.len());
-    std::mem::forget(added);
+    // std::mem::forget(added);
+    std::mem::drop(added);
+    println!("-- took {} msec", (time::Instant::now() - t0).as_millis());
+
+    let t0 = time::Instant::now();
+    println!("@ {}", open.len());
+    // std::mem::forget(added);
+    std::mem::drop(open);
+    println!("-- took {} msec", (time::Instant::now() - t0).as_millis());
 }
 
 const INPUT_DEMO: &str = "########################
