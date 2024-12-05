@@ -1,21 +1,22 @@
-fn run(title: &str, input: &str) {
-    let data: Vec<Vec<i32>> = input
-        .lines()
-        .map(|line| {
-            line.split_ascii_whitespace()
-                .map(|n| str::parse(n).unwrap())
-                .collect()
-        })
-        .collect();
+use fancy_regex::{Captures, Regex};
 
-    println!("{} part 1: {}", title, "TODO");
+fn run(title: &str, input: &str, reps: usize) {
+    let re = Regex::new(r"([0-9])\1*").unwrap();
 
-    println!("{} part 2: {}", title, "TODO");
+    let mut s = input.to_owned();
+    for i in 0..reps {
+        s = re.replace_all(s.as_str(), |m: &Captures| {
+            format!("{}{}", m.get(0).unwrap().as_str().len(), m.get(1).unwrap().as_str())
+        }).to_string();
+        // println!("{} {}", i, s.len());
+    }
+
+    println!("{} part N: {}", title, s.len());
+
 }
 
-const INPUT_DEMO: &str = "";
-
 fn main() {
-    run("demo", INPUT_DEMO);
-    run("input", &std::fs::read_to_string("10/input.txt").unwrap());
+    run("demo", "1", 10);
+    run("input", "3113322113", 40);
+    run("input", "3113322113", 50);
 }
