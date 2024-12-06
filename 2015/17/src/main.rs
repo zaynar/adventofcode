@@ -1,21 +1,42 @@
-fn run(title: &str, input: &str) {
-    let data: Vec<Vec<i32>> = input
+use itertools::Itertools;
+
+fn run(title: &str, input: &str, target: u32) {
+    let data: Vec<u32> = input
         .lines()
-        .map(|line| {
-            line.split_ascii_whitespace()
-                .map(|n| str::parse(n).unwrap())
-                .collect()
-        })
+        .map(|line| line.parse().unwrap())
         .collect();
 
-    println!("{} part 1: {}", title, "TODO");
+    let mut part1 = 0;
+    let mut min = usize::MAX;
+    for p in data.iter().powerset() {
+        if p.iter().copied().sum::<u32>() == target {
+            // println!("{:?}", p);
+            part1 += 1;
+            min = min.min(p.len());
+        }
+    }
 
-    println!("{} part 2: {}", title, "TODO");
+    let mut part2 = 0;
+    for p in data.iter().powerset() {
+        if p.len() == min && p.iter().copied().sum::<u32>() == target {
+            // println!("{:?}", p);
+            part2 += 1;
+        }
+    }
+
+    println!("{} part 1: {}", title, part1);
+
+    println!("{} part 2: {}", title, part2);
 }
 
-const INPUT_DEMO: &str = "";
+const INPUT_DEMO: &str = "20
+15
+10
+5
+5
+";
 
 fn main() {
-    run("demo", INPUT_DEMO);
-    run("input", &std::fs::read_to_string("17/input.txt").unwrap());
+    run("demo", INPUT_DEMO, 25);
+    run("input", &std::fs::read_to_string("17/input.txt").unwrap(), 150);
 }
