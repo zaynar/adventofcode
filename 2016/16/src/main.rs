@@ -1,21 +1,42 @@
-fn run(title: &str, input: &str) {
-    let data: Vec<Vec<i32>> = input
-        .lines()
-        .map(|line| {
-            line.split_ascii_whitespace()
-                .map(|n| str::parse(n).unwrap())
-                .collect()
-        })
-        .collect();
+use itertools::Itertools;
 
-    println!("{} part 1: {}", title, "TODO");
+fn dragon(mut a: Vec<u8>, len: usize) -> Vec<u8> {
+    while a.len() < len {
 
-    println!("{} part 2: {}", title, "TODO");
+        let mut b = a.clone();
+        b.reverse();
+        b = b.iter().map(|c| 1 - *c).collect_vec();
+        a.push(0);
+        a.append(&mut b);
+    }
+    a[0..len].to_vec()
 }
 
-const INPUT_DEMO: &str = "";
+fn csum(a: Vec<u8>) -> Vec<u8> {
+    let mut r = Vec::new();
+
+    for cs in a.chunks_exact(2) {
+        if cs[0] == cs[1] {
+            r.push(1);
+        } else {
+            r.push(0);
+        }
+    }
+
+    if r.len() % 2 == 0 {
+        csum(r)
+    } else {
+        r
+    }
+}
+
 
 fn main() {
-    run("demo", INPUT_DEMO);
-    run("input", &std::fs::read_to_string("16/input.txt").unwrap());
+    // println!("{:?}", csum([1,1,0,0,1,0,1,1,0,1,0,0].to_vec()));
+
+    let v = dragon([1,0,1,1,1,0,1,1,1,1,1,0,0,1,1,1,1].to_vec(), 272);
+    println!("{:?}", csum(v).iter().map(|c| c.to_string()).collect::<String>());
+
+    let v = dragon([1,0,1,1,1,0,1,1,1,1,1,0,0,1,1,1,1].to_vec(), 35651584);
+    println!("{:?}", csum(v).iter().map(|c| c.to_string()).collect::<String>());
 }
