@@ -1,21 +1,25 @@
-fn run(title: &str, input: &str) {
-    let data: Vec<Vec<i32>> = input
-        .lines()
-        .map(|line| {
-            line.split_ascii_whitespace()
-                .map(|n| str::parse(n).unwrap())
-                .collect()
-        })
-        .collect();
-
-    println!("{} part 1: {}", title, "TODO");
-
-    println!("{} part 2: {}", title, "TODO");
-}
-
-const INPUT_DEMO: &str = "";
-
 fn main() {
-    run("demo", INPUT_DEMO);
-    run("input", &std::fs::read_to_string("25/input.txt").unwrap());
+    let (mut x, mut y) = (0, 0);
+
+    let mut num: i64 = 20151125;
+
+    loop {
+        //  To continue, please consult the code grid in the manual.  Enter the code at row 3010, column 3019.
+        if y+1 == 3010 && x+1 == 3019 {
+            println!("col={} row={} {}", x+1, y+1, num);
+            break;
+        }
+
+        if y == 0 {
+            y = x + 1;
+            x = 0;
+        } else {
+            y -= 1;
+            x += 1;
+        }
+
+        num = (num * 252533) % 33554393;
+
+    }
+
 }
