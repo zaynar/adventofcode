@@ -1,19 +1,31 @@
+// Part 1: 7 mins
+// Part 1+2: 8 mins
+
+use std::collections::HashMap;
+
 fn run(title: &str, input: &str) {
-    let data: Vec<Vec<i32>> = input
-        .lines()
-        .map(|line| {
-            line.split_ascii_whitespace()
-                .map(|n| str::parse(n).unwrap())
-                .collect()
-        })
-        .collect();
+    let mut data: Vec<i32> = input.trim().split_whitespace().map(|n| n.parse().unwrap()).collect();
 
-    println!("{} part 1: {}", title, "TODO");
+    let mut seen = HashMap::new();
 
-    println!("{} part 2: {}", title, "TODO");
+    for k in 0.. {
+        println!("{:?}", data);
+        if let Some(k2) = seen.insert(data.clone(), k) {
+            println!("{} part 1: {}", title, k);
+            println!("{} part 2: {}", title, k - k2);
+            break;
+        }
+        let min = data.iter().max().unwrap();
+        let (i, &n) = data.iter().enumerate().find(|(i, n)| *n == min).unwrap();
+        data[i] = 0;
+        for j in 0..(n as usize) {
+            let len = data.len();
+            data[(i + j + 1) % len] += 1;
+        }
+    }
 }
 
-const INPUT_DEMO: &str = "";
+const INPUT_DEMO: &str = "0 2 7 0";
 
 fn main() {
     run("demo", INPUT_DEMO);

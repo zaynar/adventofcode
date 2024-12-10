@@ -1,16 +1,28 @@
+// Part 1: ?
+// Part 2: 3 mins
+
+use std::{collections::HashSet};
+
+use itertools::Itertools;
+
 fn run(title: &str, input: &str) {
-    let data: Vec<Vec<i32>> = input
-        .lines()
-        .map(|line| {
-            line.split_ascii_whitespace()
-                .map(|n| str::parse(n).unwrap())
-                .collect()
-        })
-        .collect();
+    let mut part1 = 0;
+    let mut part2 = 0;
+    for row in input.lines() {
+        let mut words = row.split_whitespace().collect_vec();
+        if HashSet::<String>::from_iter(words.iter().map(|&s| s.to_owned())).len() == words.len() {
+            part1 += 1;
+        }
 
-    println!("{} part 1: {}", title, "TODO");
+        let words = words.iter_mut().map(|w| w.chars().sorted().collect::<String>()).collect_vec();
+        if HashSet::<String>::from_iter(words.clone()).len() == words.len() {
+            part2 += 1;
+        }
+    }
 
-    println!("{} part 2: {}", title, "TODO");
+    println!("{} part 1: {}", title, part1);
+
+    println!("{} part 2: {}", title, part2);
 }
 
 const INPUT_DEMO: &str = "";
