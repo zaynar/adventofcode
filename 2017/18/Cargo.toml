@@ -5,3 +5,5 @@ edition = "2021"
 
 [dependencies]
 itertools = "0.13.0"
+crossbeam = "0.8.4"
+crossbeam-channel = "0.5.13"
