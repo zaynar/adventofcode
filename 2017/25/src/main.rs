@@ -1,21 +1,60 @@
-fn run(title: &str, input: &str) {
-    let data: Vec<Vec<i32>> = input
-        .lines()
-        .map(|line| {
-            line.split_ascii_whitespace()
-                .map(|n| str::parse(n).unwrap())
-                .collect()
-        })
-        .collect();
+// Part 1: 8 mins
 
-    println!("{} part 1: {}", title, "TODO");
+use std::collections::HashMap;
 
-    println!("{} part 2: {}", title, "TODO");
+enum State {
+    A, B, C, D, E, F
+}
+enum Dir {
+    L,
+    R,
 }
 
-const INPUT_DEMO: &str = "";
-
 fn main() {
-    run("demo", INPUT_DEMO);
-    run("input", &std::fs::read_to_string("25/input.txt").unwrap());
+    let mut steps = 12656374;
+    let mut tape = vec![false; steps * 2];
+    let mut cursor = steps;
+    let mut state = State::A;
+    for step in 0..steps {
+        let v = tape[cursor];
+        let (write, dir, new) = match state {
+            State::A => if !v {
+                (1, Dir::R, State::B)
+            } else {
+                (0, Dir::L, State::C)
+            },
+            State::B => if !v {
+                (1, Dir::L, State::A)
+            } else {
+                (1, Dir::L, State::D)
+            },
+            State::C => if !v {
+                (1, Dir::R, State::D)
+            } else {
+                (0, Dir::R, State::C)
+            },
+            State::D => if !v {
+                (0, Dir::L, State::B)
+            } else {
+                (0, Dir::R, State::E)
+            },
+            State::E => if !v {
+                (1, Dir::R, State::C)
+            } else {
+                (1, Dir::L, State::F)
+            },
+            State::F => if !v {
+                (1, Dir::L, State::E)
+            } else {
+                (1, Dir::R, State::A)
+            },
+        };
+        tape[cursor] = write == 1;
+        cursor = match dir {
+            Dir::L => cursor - 1,
+            Dir::R => cursor + 1,
+        };
+        state = new;
+    }
+    println!("part 1: {}", tape.iter().filter(|b| **b).count());
 }
