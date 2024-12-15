@@ -2,28 +2,29 @@
 // Part 1+2: 36 mins
 
 use std::collections::HashSet;
+use aocgrid::Grid;
 
 use itertools::Itertools;
 
-fn push(pos: (i32, i32), dir: (i32, i32), grid: &Vec<Vec<char>>) -> ((i32, i32), Vec<Vec<char>>) {
+fn push(pos: (i32, i32), dir: (i32, i32), grid: &Grid<char>) -> ((i32, i32), Grid<char>) {
     let nx = pos.0 + dir.0;
     let ny = pos.1 + dir.1;
-    match grid[ny as usize][nx as usize] {
+    match grid.get(nx, ny) {
         '.' => ((nx, ny), grid.clone()),
         '#' => (pos, grid.clone()),
         'O' => {
             for rocks in 1i32.. {
                 let ex = pos.0 + dir.0 * rocks;
                 let ey = pos.1 + dir.1 * rocks;
-                if grid[ey as usize][ex as usize] == '#' {
+                if *grid.get(ex, ey) == '#' {
                     return (pos, grid.clone());
-                } else if grid[ey as usize][ex as usize] == '.' {
+                } else if *grid.get(ex, ey) == '.' {
                     let mut ret = grid.clone();
-                    ret[ey as usize][ex as usize] = 'O';
-                    ret[ny as usize][nx as usize] = '.';
+                    ret.set(ex, ey, 'O');
+                    ret.set(nx, ny, '.');
                     return ((nx, ny), ret);
                 } else {
-                    assert_eq!(grid[ey as usize][ex as usize], 'O');
+                    assert_eq!(*grid.get(ex, ey), 'O');
                 }
             }
             panic!()
@@ -34,21 +35,19 @@ fn push(pos: (i32, i32), dir: (i32, i32), grid: &Vec<Vec<char>>) -> ((i32, i32),
 
 fn run(title: &str, input: &str) {
     let (grid, moves) = input.split_once("\n\n").unwrap();
-    let mut grid = grid.lines().map(|line| line.chars().collect_vec()).collect_vec();
+    let mut grid = Grid::from(grid);
     let moves = moves.replace("\n", "").chars().collect_vec();
 
     let mut pos = (0, 0);
 
-    let h = grid.len();
-    let w = grid[0].len();
-    for y in 0..h {
-        for x in 0..w {
-            if grid[y][x] == '@' {
-                pos = (x as i32, y as i32);
-                grid[y][x] = '.';
-            }
+    // grid.print();
+
+    grid.for_each(|x, y, c| {
+        if *c == '@' {
+            pos = (x as i32, y as i32);
+            *c = '.';
         }
-    }
+    });
 
     // println!("{:?}", grid);
     // println!("{:?}", moves);
@@ -66,26 +65,24 @@ fn run(title: &str, input: &str) {
     }
 
     let mut gps = 0;
-    for y in 0..h {
-        for x in 0..w {
-            // print!("{}", grid[y][x]);
-            if grid[y][x] == 'O' {
-                gps += 100*y + x;
-            }
+    grid.for_each(|x, y, c| {
+        if *c == 'O' {
+            gps += 100*y + x;
         }
-        // println!();
-    }
+    });
+
+    // grid.print();
 
     println!("{} part 1: {}", title, gps);
 }
 
 // Find all connected boxes
-fn boxes(found: &mut HashSet<(i32, i32)>, pos: (i32, i32), dir: (i32, i32), grid: &Vec<Vec<char>>) {
+fn boxes(found: &mut HashSet<(i32, i32)>, pos: (i32, i32), dir: (i32, i32), grid: &Grid<char>) {
     found.insert(pos);
 
     let nx = pos.0 + dir.0;
     let ny = pos.1 + dir.1;
-    match grid[ny as usize][nx as usize] {
+    match grid.get(nx, ny) {
         '[' => {
             found.insert((nx, ny));
             boxes(found, (nx, ny), dir, grid);
@@ -104,40 +101,40 @@ fn boxes(found: &mut HashSet<(i32, i32)>, pos: (i32, i32), dir: (i32, i32), grid
     }
 }
 
-fn push2(pos: (i32, i32), dir: (i32, i32), grid: &Vec<Vec<char>>) -> ((i32, i32), Vec<Vec<char>>) {
+fn push2(pos: (i32, i32), dir: (i32, i32), grid: &Grid<char>) -> ((i32, i32), Grid<char>) {
     let nx = pos.0 + dir.0;
     let ny = pos.1 + dir.1;
 
-    match grid[ny as usize][nx as usize] {
+    match grid.get(nx, ny) {
         '.' => ((nx, ny), grid.clone()),
         '#' => (pos, grid.clone()),
         '[' | ']' => {
 
             let mut rocks = HashSet::new();
             boxes(&mut rocks, (nx, ny), dir, grid);
-            if grid[ny as usize][nx as usize] == '[' && dir.1 != 0 {
+            if *grid.get(nx, ny) == '[' && dir.1 != 0 {
                 boxes(&mut rocks, (nx + 1, ny), dir, grid);
-            } else if grid[ny as usize][nx as usize] == ']' && dir.1 != 0 {
+            } else if *grid.get(nx, ny) == ']' && dir.1 != 0 {
                 boxes(&mut rocks, (nx - 1, ny), dir, grid);
             }
-            println!("pushing {} {:?}", rocks.len(), rocks);
+            // println!("pushing {} {:?}", rocks.len(), rocks);
 
             for (rx, ry) in &rocks {
                 let rnx = rx + dir.0;
                 let rny = ry + dir.1;
-                if grid[rny as usize][rnx as usize] == '#' {
+                if *grid.get(rnx, rny) == '#' {
                     return (pos, grid.clone());
                 }
             }
 
             let mut new = grid.clone();
             for (rx, ry) in &rocks {
-                new[*ry as usize][*rx as usize] = '.';
+                new.set(*rx, *ry, '.');
             }
             for (rx, ry) in &rocks {
                 let rnx = rx + dir.0;
                 let rny = ry + dir.1;
-                new[rny as usize][rnx as usize] = grid[*ry as usize][*rx as usize];
+                new.set(rnx, rny, *grid.get(*rx, *ry));
             }
 
             return ((nx, ny), new);
@@ -148,7 +145,7 @@ fn push2(pos: (i32, i32), dir: (i32, i32), grid: &Vec<Vec<char>>) -> ((i32, i32)
 
 fn run2(title: &str, input: &str) {
     let (grid, moves) = input.split_once("\n\n").unwrap();
-    let mut grid = grid.lines().map(|line| line.chars().map(|c|
+    let mut grid = Grid::from(grid.lines().map(|line| line.chars().map(|c|
         match c {
             '#' => vec!['#','#'],
             'O' => vec!['[',']'],
@@ -156,28 +153,19 @@ fn run2(title: &str, input: &str) {
             '@' => vec!['@','.'],
             _ => panic!()
         }
-    ).concat()).collect_vec();
+    ).concat()).collect_vec());
     let moves = moves.replace("\n", "").chars().collect_vec();
 
     let mut pos = (0, 0);
 
-    let h = grid.len();
-    let w = grid[0].len();
-    for y in 0..h {
-        for x in 0..w {
-            if grid[y][x] == '@' {
-                pos = (x as i32, y as i32);
-                grid[y][x] = '.';
-            }
+    grid.for_each(|x, y, c| {
+        if *c == '@' {
+            pos = (x as i32, y as i32);
+            *c = '.';
         }
-    }
+    });
 
-    for y in 0..h {
-        for x in 0..w {
-            print!("{}", grid[y][x]);
-        }
-        println!();
-    }
+    grid.print();
 
     // println!("{:?}", grid);
     // println!("{:?}", moves);
@@ -194,37 +182,24 @@ fn run2(title: &str, input: &str) {
             _ => panic!(),
         };
         (pos, grid) = push2(pos, dir, &grid);
-
-        // for y in 0..h {
-        //     for x in 0..w {
-        //         if (x as i32, y as i32) == pos {
-        //             if grid[y][x] != '.' { println!("==== BAD ====");}
-        //             print!("@");
-        //         } else {
-        //             print!("{}", grid[y][x]);
-        //         }
-        //     }
-        //     println!();
-        // }
-
     }
+
+    grid.map_coords(|x, y, c| {
+        if (x, y) == pos {
+            assert_eq!(c, '.');
+            '@'
+        } else {
+            c
+        }
+    }).print();
 
     let mut gps = 0;
-    for y in 0..h {
-        for x in 0..w {
-            if (x as i32, y as i32) == pos {
-                assert_eq!(grid[y][x], '.');
-                print!("@");
-            } else {
-                print!("{}", grid[y][x]);
-            }
-            if grid[y][x] == '[' {
-                gps += 100*y + x;
-            }
+    grid.for_each(|x, y, c| {
+        if *c == '[' {
+            gps += 100*y + x;
         }
-        println!();
-    }
-    println!();
+    });
+
 
     println!("{} part 2: {}", title, gps);
 }
@@ -254,6 +229,6 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^
 
 fn main() {
     // run("demo", INPUT_DEMO);
-    run2("demo", INPUT_DEMO);
+    // run2("demo", INPUT_DEMO);
     run2("input", &std::fs::read_to_string("15/input.txt").unwrap());
 }
