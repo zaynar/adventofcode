@@ -40,7 +40,7 @@ fn run(title: &str, input: &str) {
 
     let mut pos = (0, 0);
 
-    // grid.print();
+    // println!("{}", grid);
 
     grid.for_each(|x, y, c| {
         if *c == '@' {
@@ -71,7 +71,7 @@ fn run(title: &str, input: &str) {
         }
     });
 
-    // grid.print();
+    // println!("{}", grid);
 
     println!("{} part 1: {}", title, gps);
 }
@@ -165,7 +165,7 @@ fn run2(title: &str, input: &str) {
         }
     });
 
-    grid.print();
+    println!("{}", grid);
 
     // println!("{:?}", grid);
     // println!("{:?}", moves);
@@ -184,14 +184,14 @@ fn run2(title: &str, input: &str) {
         (pos, grid) = push2(pos, dir, &grid);
     }
 
-    grid.map_coords(|x, y, c| {
+    println!("{}", grid.map_coords(|x, y, c| {
         if (x, y) == pos {
             assert_eq!(c, '.');
             '@'
         } else {
             c
         }
-    }).print();
+    }));
 
     let mut gps = 0;
     grid.for_each(|x, y, c| {
@@ -229,6 +229,6 @@ v^^>>><<^^<>>^v^<v^vv<>v^<<>^<^v^v><^<<<><<^<v><v<>vv>>v><v^<vv<>v^<<^
 
 fn main() {
     // run("demo", INPUT_DEMO);
-    // run2("demo", INPUT_DEMO);
+    run2("demo", INPUT_DEMO);
     run2("input", &std::fs::read_to_string("15/input.txt").unwrap());
 }

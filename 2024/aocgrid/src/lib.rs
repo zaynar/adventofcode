@@ -1,4 +1,4 @@
-use std::fmt::{Debug, Display};
+use std::fmt;
 
 #[derive(Clone)]
 pub struct Grid<T> {
@@ -30,7 +30,9 @@ impl From<&str> for Grid<char> {
 }
 
 impl<T> From<Vec<Vec<T>>> for Grid<T>
-where T: Clone {
+where
+    T: Clone,
+{
     fn from(input: Vec<Vec<T>>) -> Self {
         let width = input[0].len();
         let height = input.len();
@@ -63,6 +65,10 @@ where
         assert!(0 <= y);
         assert!(y < self.height);
         self.storage.get_mut((x + y * self.width) as usize).unwrap()
+    }
+
+    pub fn get_unchecked(&self, x: i32, y: i32) -> &T {
+        self.storage.get((x + y * self.width) as usize).unwrap()
     }
 
     pub fn try_get(&self, x: i32, y: i32) -> Option<&T> {
@@ -112,6 +118,22 @@ where
 
 impl<T> Grid<T>
 where
+    T: PartialEq,
+{
+    pub fn find(&self, c: &T) -> Option<(i32, i32)> {
+        for y in 0..self.height {
+            for x in 0..self.width {
+                if self.get_unchecked(x, y) == c {
+                    return Some((x, y));
+                }
+            }
+        }
+        None
+    }
+}
+
+impl<T> Grid<T>
+where
     T: Copy,
 {
     pub fn map<B, F>(&self, f: F) -> Grid<B>
@@ -132,35 +154,42 @@ where
         Grid {
             width: self.width,
             height: self.height,
-            storage: self.storage.iter().enumerate().map(|(i, c)| f(i as i32 % self.width, i as i32 / self.width, *c)).collect(),
+            storage: self
+                .storage
+                .iter()
+                .enumerate()
+                .map(|(i, c)| f(i as i32 % self.width, i as i32 / self.width, *c))
+                .collect(),
         }
     }
 }
 
-impl<T> Grid<T>
+impl<T> fmt::Display for Grid<T>
 where
-    T: Display,
+    T: fmt::Display,
 {
-    pub fn print(&self) {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for y in 0..self.height {
             for x in 0..self.width {
-                print!("{}", self.get(x, y));
+                self.get(x, y).fmt(f)?;
             }
-            println!();
+            write!(f, "\n")?;
         }
+        Ok(())
     }
 }
 
-impl<T> Grid<T>
+impl<T> fmt::Debug for Grid<T>
 where
-    T: Debug,
+    T: fmt::Debug,
 {
-    pub fn print_debug(&self) {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         for y in 0..self.height {
             for x in 0..self.width {
-                print!("{:?}", self.get(x, y));
+                self.get(x, y).fmt(f)?;
             }
-            println!();
+            write!(f, "\n")?;
         }
+        Ok(())
     }
 }

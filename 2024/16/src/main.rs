@@ -32,30 +32,21 @@ impl PartialOrd for State {
 }
 
 fn run(title: &str, input: &str) {
-    let mut grid = Grid::from(input);
+    let grid = Grid::from(input);
     // grid.print();
 
-    let mut start = (0, 0);
-    let mut end = (0, 0);
-    grid.for_each(|x, y, c| {
-        if *c == 'S' {
-            start = (x, y);
-        } else if *c == 'E' {
-            end = (x, y);
-        }
-    });
-
-    let mut dir = (1, 0);
+    let start = grid.find(&'S').unwrap();
+    let end = grid.find(&'E').unwrap();
 
     let mut open = BinaryHeap::new();
-    open.push(State { cost: 0, pos: start, dir, path: vec![start] });
+    open.push(State { cost: 0, pos: start, dir: (1, 0), path: vec![start] });
     let mut seen: HashMap<((i32, i32), (i32, i32)), Seen> = HashMap::new();
 
     let mut best = None;
 
     while let Some(node) = open.pop() {
         if node.pos == end {
-            println!("end {:?}", node);
+            // println!("end {:?}", node);
             if best.is_none() {
                 println!("{} part 1: {}", title, node.cost);
                 best = Some(node.cost);
@@ -112,6 +103,13 @@ fn run(title: &str, input: &str) {
             }
         }
     }
+
+    let mut grid2 = grid.clone();
+    for p in &part2 {
+        grid2.set(p.0, p.1, 'O');
+    }
+    println!("{}", grid2);
+
     println!("{} part 2: {:?}", title, part2.len());
 }
 
