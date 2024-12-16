@@ -1,35 +1,10 @@
 // Part 1: 10 mins
 // Part 1+2: 34 mins
 
-use std::{cmp::Ordering, collections::{BinaryHeap, HashMap, HashSet}};
+use std::collections::HashSet;
 
 use aocgrid::Grid;
-
-#[derive(PartialEq, Eq, Debug)]
-struct State {
-    cost: usize,
-    pos: (i32, i32),
-    dir: (i32, i32),
-    path: Vec<(i32, i32)>,
-}
-
-#[derive(Debug)]
-struct Seen {
-    cost: usize,
-    preds: HashSet<(i32, i32)>,
-}
-
-impl Ord for State {
-    fn cmp(&self, other: &Self) -> Ordering {
-        other.cost.cmp(&self.cost).then((self.pos, self.dir).cmp(&(other.pos, other.dir)))
-    }
-}
-
-impl PartialOrd for State {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
+use aocpath::Pathfinder;
 
 fn run(title: &str, input: &str) {
     let grid = Grid::from(input);
@@ -38,80 +13,60 @@ fn run(title: &str, input: &str) {
     let start = grid.find(&'S').unwrap();
     let end = grid.find(&'E').unwrap();
 
-    let mut open = BinaryHeap::new();
-    open.push(State { cost: 0, pos: start, dir: (1, 0), path: vec![start] });
-    let mut seen: HashMap<((i32, i32), (i32, i32)), Seen> = HashMap::new();
+    #[derive(Ord, PartialOrd, Eq, PartialEq, Hash, Copy, Clone, Debug)]
+    struct Node {
+        pos: (i32, i32),
+        dir: (i32, i32),
+    }
 
-    let mut best = None;
+    struct PathContext {
+        grid: Grid<char>,
+        end: (i32, i32),
+        best: Option<(Node, i64)>,
+    }
 
-    while let Some(node) = open.pop() {
-        if node.pos == end {
-            // println!("end {:?}", node);
-            if best.is_none() {
-                println!("{} part 1: {}", title, node.cost);
-                best = Some(node.cost);
+    impl aocpath::Callbacks<Node> for PathContext {
+        fn get_neighbours(&mut self, node: &Node) -> Vec<(i64, Node)> {
+            let mut ret = Vec::new();
+            ret.push((1000, Node { pos: node.pos, dir: (-node.dir.1, node.dir.0) }));
+            ret.push((1000, Node { pos: node.pos, dir: (node.dir.1, -node.dir.0) }));
+
+            let newpos = (node.pos.0 + node.dir.0, node.pos.1 + node.dir.1);
+            if *self.grid.get(newpos.0, newpos.1) != '#' {
+                ret.push((1, Node { pos: newpos, dir: node.dir }));
             }
+
+            ret
         }
 
-        if let Some(b) = best {
-            println!("abort {}", node.cost);
-            if node.cost > b {
-                break;
+        fn found_path(&mut self, id: &Node, cost: i64) -> Result<(), aocpath::PathError> {
+            if id.pos == self.end && self.best.is_none() {
+                println!("found path to {:?}", id);
+                self.best = Some((id.clone(), cost));
+                return Err(aocpath::PathError::Abort);
             }
-        }
-
-        // if !seen.insert((node.pos, node.dir)) {
-        //     continue;
-        // }
-        if let Some(s) = seen.get(&(node.pos, node.dir)) {
-            if s.cost < node.cost {
-                continue;
-            } else if node.cost < s.cost {
-                let mut preds = HashSet::new();
-                for p in &node.path {
-                    preds.insert(*p);
-                }
-                seen.insert((node.pos, node.dir), Seen { cost: node.cost, preds });
-            } else {
-                for p in &node.path {
-                    seen.get_mut(&(node.pos, node.dir)).unwrap().preds.insert(*p);
-                }
-            }
-        } else {
-            let mut preds = HashSet::new();
-            for p in &node.path {
-                preds.insert(*p);
-            }
-            seen.insert((node.pos, node.dir), Seen { cost: node.cost, preds });
-        }
-
-        open.push(State { cost: node.cost + 1000, pos: node.pos, dir: (-node.dir.1, node.dir.0), path: node.path.clone() });
-        open.push(State { cost: node.cost + 1000, pos: node.pos, dir: (node.dir.1, -node.dir.0), path: node.path.clone() });
-        let newpos = (node.pos.0 + node.dir.0, node.pos.1 + node.dir.1);
-        if *grid.get(newpos.0, newpos.1) != '#' {
-            let mut path = node.path.clone();
-            path.push(newpos);
-            open.push(State { cost: node.cost + 1, pos: newpos, dir: node.dir, path });
+            Ok(())
         }
     }
 
-    let mut part2 = HashSet::new();
-    for dir in [(1,0),(-1,0),(0,1),(0,-1)] {
-        if let Some(s) = seen.get(&(end, dir)) {
-            for p in &s.preds {
-                part2.insert(*p);
-            }
-        }
-    }
+    let mut ctx = PathContext { grid: grid.clone(), end, best: None };
+    let mut pathfinder = Pathfinder::new();
+    let _ = pathfinder.run(&mut ctx, Node { pos: start, dir: (1, 0) });
 
-    let mut grid2 = grid.clone();
-    for p in &part2 {
-        grid2.set(p.0, p.1, 'O');
-    }
-    println!("{}", grid2);
+    let path = pathfinder.get_path(ctx.best.unwrap().0);
+    let path_coords: HashSet<(i32, i32)> = HashSet::from_iter(path.iter().map(|n| n.pos));
 
-    println!("{} part 2: {:?}", title, part2.len());
+    // Really should repeat this for dir in [(1,0),(-1,0),(0,1),(0,-1)]
+    let preds = pathfinder.get_all_preds(ctx.best.unwrap().0);
+    let pred_coords: HashSet<(i32, i32)> = HashSet::from_iter(preds.iter().map(|n| n.pos));
+
+    // println!("{}", grid.map_coords(|x, y, c| if path_coords.contains(&(x, y)) { 'O' } else { c }));
+    // println!("{}", grid.map_coords(|x, y, c| if pred_coords.contains(&(x, y)) { 'O' } else { c }));
+
+    println!("{} part 1: {:?}", title, ctx.best.unwrap().1);
+    println!("{} part 2: {:?}", title, pred_coords.len());
 }
+
 
 const INPUT_DEMO: &str = "###############
 #.......#....E#

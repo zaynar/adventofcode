@@ -26,5 +26,6 @@ members = [
     "24",
     "25",
     "aocgrid",
+    "aocpath",
 ]
 resolver = "2"
