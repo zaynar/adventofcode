@@ -1,5 +1,8 @@
 use std::{
-    cmp::Ordering, collections::{BinaryHeap, HashMap, HashSet, VecDeque}, fmt::Debug, hash::Hash
+    cmp::Ordering,
+    collections::{BinaryHeap, HashMap, HashSet, VecDeque},
+    fmt::Debug,
+    hash::Hash,
 };
 
 #[derive(thiserror::Error, Debug)]
@@ -166,7 +169,7 @@ where
         Ok(())
     }
 
-    fn step_bfs<C>(&mut self, node: Node<T>, callbacks: &mut C) -> Result<(), PathError>
+    fn step_bfs_dfs<C>(&mut self, node: Node<T>, callbacks: &mut C) -> Result<(), PathError>
     where
         C: Callbacks<T>,
     {
@@ -220,7 +223,19 @@ where
         self.start(start_node);
 
         while let Some(node) = self.open_deq.pop_front() {
-            self.step_bfs(node, callbacks)?;
+            self.step_bfs_dfs(node, callbacks)?;
+        }
+        Err(PathError::Exhausted)
+    }
+
+    pub fn dfs<C>(&mut self, callbacks: &mut C, start_node: T) -> Result<(), PathError>
+    where
+        C: Callbacks<T>,
+    {
+        self.start(start_node);
+
+        while let Some(node) = self.open_deq.pop_back() {
+            self.step_bfs_dfs(node, callbacks)?;
         }
         Err(PathError::Exhausted)
     }

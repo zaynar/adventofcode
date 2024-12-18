@@ -53,7 +53,7 @@ fn run(title: &str, input: &str, size: usize, fallen: usize) {
 
     let mut ctx = PathContext { grid: grid.clone(), end: (size as i32 - 1, size as i32 - 1) };
     let mut pathfinder = Pathfinder::new();
-    let _ = pathfinder.bfs(&mut ctx, Node { pos: (0, 0) });
+    let _ = pathfinder.dfs(&mut ctx, Node { pos: (0, 0) });
 }
 
 fn run2(title: &str, input: &str, size: usize) {
@@ -107,7 +107,7 @@ fn run2(title: &str, input: &str, size: usize) {
 
         let mut ctx = PathContext { grid: grid.clone(), end: (size as i32 - 1, size as i32 - 1) };
         let mut pathfinder = Pathfinder::new();
-        match pathfinder.bfs(&mut ctx, Node { pos: (0, 0) }) {
+        match pathfinder.dfs(&mut ctx, Node { pos: (0, 0) }) {
             Err(aocpath::PathError::Exhausted) => {
                 println!("no path: {} {:?}", fallen, input.lines().nth(fallen - 1));
                 return;
