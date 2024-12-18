@@ -127,6 +127,10 @@ dependencies = [
 [[package]]
 name = "day18"
 version = "0.1.0"
+dependencies = [
+ "aocgrid",
+ "aocpath",
+]
 
 [[package]]
 name = "day19"
