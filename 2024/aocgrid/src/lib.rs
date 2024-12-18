@@ -48,6 +48,32 @@ where
 }
 
 impl<T> Grid<T>
+{
+    pub fn width(&self) -> i32 {
+        self.width
+    }
+
+    pub fn height(&self) -> i32 {
+        self.height
+    }
+}
+
+impl<T> Grid<T>
+where
+    T: Sized + Clone,
+{
+    pub fn new_empty(width: usize, height: usize, initial: T) -> Self {
+        let mut storage = Vec::new();
+        storage.resize_with(width * height, || initial.clone());
+        Grid {
+            width: width as i32,
+            height: height as i32,
+            storage,
+        }
+    }
+}
+
+impl<T> Grid<T>
 where
     T: Sized,
 {

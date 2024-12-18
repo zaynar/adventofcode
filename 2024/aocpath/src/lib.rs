@@ -1,7 +1,5 @@
 use std::{
-    cmp::Ordering,
-    collections::{BinaryHeap, HashMap, HashSet},
-    hash::Hash,
+    cmp::Ordering, collections::{BinaryHeap, HashMap, HashSet, VecDeque}, fmt::Debug, hash::Hash
 };
 
 #[derive(thiserror::Error, Debug)]
@@ -12,7 +10,7 @@ pub enum PathError {
     Abort,
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Debug, Hash, Clone)]
 struct Node<T> {
     id: T,
     pred: Option<T>,
@@ -47,87 +45,184 @@ where
     T: Eq + Ord + Hash + Clone,
 {
     open: BinaryHeap<Node<T>>,
+    open_deq: VecDeque<Node<T>>,
     pred: HashMap<T, HashSet<Option<T>>>,
     dist: HashMap<T, i64>,
+    seen: HashSet<Node<T>>,
 }
 
 impl<T> Pathfinder<T>
 where
-    T: Eq + Ord + Hash + Clone,
+    T: Eq + Ord + Hash + Clone + Debug,
 {
     pub fn new() -> Self {
         Self {
             open: BinaryHeap::new(),
+            open_deq: VecDeque::new(),
             pred: HashMap::new(),
             dist: HashMap::new(),
+            seen: HashSet::new(),
         }
     }
 
     fn start(&mut self, start_node: T) {
         self.open.clear();
+        self.open_deq.clear();
         self.pred.clear();
         self.dist.clear();
+        self.seen.clear();
 
-        self.open.push(Node {
-            id: start_node,
+        let start = Node {
+            id: start_node.clone(),
             pred: None,
             cost: 0,
-        });
+        };
+        self.open.push(start.clone());
+        self.open_deq.push_back(start.clone());
+        self.pred.insert(start_node.clone(), HashSet::new());
+        self.dist.insert(start_node.clone(), 0);
+        self.seen.insert(start);
     }
 
-    fn step<C>(&mut self, callbacks: &mut C) -> Result<(), PathError>
+    // Like step_dijkstra, but records all equal-cost predecessors in .pred,
+    // so you can extract the set of all shortest paths
+    fn step_dijkstra_all<C>(&mut self, node: Node<T>, callbacks: &mut C) -> Result<(), PathError>
     where
         C: Callbacks<T>,
     {
-        if let Some(node) = self.open.pop() {
-            if let Some(dist) = self.dist.get(&node.id) {
-                match node.cost.cmp(&dist) {
-                    Ordering::Less => {
-                        self.dist.insert(node.id.clone(), node.cost);
-                        self.pred
-                            .insert(node.id.clone(), HashSet::from([node.pred.clone()]));
-                    }
-                    Ordering::Equal => {
-                        self.pred
-                            .get_mut(&node.id)
-                            .unwrap()
-                            .insert(node.pred.clone());
-                    }
-                    Ordering::Greater => {
-                        return Ok(());
-                    }
+        if let Some(dist) = self.dist.get(&node.id) {
+            match node.cost.cmp(&dist) {
+                Ordering::Less => {
+                    self.dist.insert(node.id.clone(), node.cost);
+                    self.pred
+                        .insert(node.id.clone(), HashSet::from([node.pred.clone()]));
                 }
-            } else {
-                self.dist.insert(node.id.clone(), node.cost);
-                self.pred
-                    .insert(node.id.clone(), HashSet::from([node.pred.clone()]));
+                Ordering::Equal => {
+                    self.pred
+                        .get_mut(&node.id)
+                        .unwrap()
+                        .insert(node.pred.clone());
+                }
+                Ordering::Greater => {
+                    return Ok(());
+                }
             }
-
-            callbacks.found_path(&node.id, node.cost)?;
-
-            for (weight, id) in callbacks.get_neighbours(&node.id) {
-                self.open.push(Node {
-                    id,
-                    pred: Some(node.id.clone()),
-                    cost: node.cost + weight,
-                });
-            }
-
-            return Ok(());
         } else {
-            return Err(PathError::Exhausted);
+            self.dist.insert(node.id.clone(), node.cost);
+            self.pred
+                .insert(node.id.clone(), HashSet::from([node.pred.clone()]));
         }
+
+        callbacks.found_path(&node.id, node.cost)?;
+
+        for (weight, id) in callbacks.get_neighbours(&node.id) {
+            let new_node = Node {
+                id,
+                pred: Some(node.id.clone()),
+                cost: node.cost + weight,
+            };
+
+            if self.seen.insert(new_node.clone()) {
+                self.open.push(new_node);
+            }
+        }
+
+        Ok(())
     }
 
-    pub fn run<C>(&mut self, callbacks: &mut C, start_node: T) -> Result<(), PathError>
+    fn step_dijkstra<C>(&mut self, node: Node<T>, callbacks: &mut C) -> Result<(), PathError>
+    where
+        C: Callbacks<T>,
+    {
+        // Skip superseded paths
+        if let Some(&dist) = self.dist.get(&node.id) {
+            if dist < node.cost {
+                return Ok(());
+            }
+        }
+
+        callbacks.found_path(&node.id, node.cost)?;
+
+        for (weight, id) in callbacks.get_neighbours(&node.id) {
+            let new_node = Node {
+                id,
+                pred: Some(node.id.clone()),
+                cost: node.cost + weight,
+            };
+
+            // Only push nodes if they're the best we've seen so far
+            // (but we need to check them again before found_path() to
+            // avoid spurious callbacks, since superseded paths won't get
+            // deleted from the heap)
+            match self.dist.get(&new_node.id) {
+                Some(&dist) if dist <= new_node.cost => (),
+                _ => {
+                    self.dist.insert(new_node.id.clone(), new_node.cost);
+                    self.open.push(new_node);
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn step_bfs<C>(&mut self, node: Node<T>, callbacks: &mut C) -> Result<(), PathError>
+    where
+        C: Callbacks<T>,
+    {
+        callbacks.found_path(&node.id, node.cost)?;
+
+        for (weight, id) in callbacks.get_neighbours(&node.id) {
+            assert_eq!(weight, 1, "BFS requires unweighted edges");
+            let new_node = Node {
+                id: id.clone(),
+                pred: Some(node.id.clone()),
+                cost: node.cost + 1,
+            };
+            self.dist.entry(new_node.id.clone()).or_insert_with(|| {
+                let c = new_node.cost;
+                self.open_deq.push_back(new_node);
+                c
+            });
+        }
+
+        Ok(())
+    }
+
+    pub fn dijkstra_all<C>(&mut self, callbacks: &mut C, start_node: T) -> Result<(), PathError>
     where
         C: Callbacks<T>,
     {
         self.start(start_node);
 
-        loop {
-            self.step(callbacks)?;
+        while let Some(node) = self.open.pop() {
+            self.step_dijkstra_all(node, callbacks)?;
         }
+        Err(PathError::Exhausted)
+    }
+
+    pub fn dijkstra<C>(&mut self, callbacks: &mut C, start_node: T) -> Result<(), PathError>
+    where
+        C: Callbacks<T>,
+    {
+        self.start(start_node);
+
+        while let Some(node) = self.open.pop() {
+            self.step_dijkstra(node, callbacks)?;
+        }
+        Err(PathError::Exhausted)
+    }
+
+    pub fn bfs<C>(&mut self, callbacks: &mut C, start_node: T) -> Result<(), PathError>
+    where
+        C: Callbacks<T>,
+    {
+        self.start(start_node);
+
+        while let Some(node) = self.open_deq.pop_front() {
+            self.step_bfs(node, callbacks)?;
+        }
+        Err(PathError::Exhausted)
     }
 
     pub fn get_path(&self, end_node: T) -> Vec<T> {

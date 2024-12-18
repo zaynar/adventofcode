@@ -51,7 +51,7 @@ fn run(title: &str, input: &str) {
 
     let mut ctx = PathContext { grid: grid.clone(), end, best: None };
     let mut pathfinder = Pathfinder::new();
-    let _ = pathfinder.run(&mut ctx, Node { pos: start, dir: (1, 0) });
+    let _ = pathfinder.dijkstra_all(&mut ctx, Node { pos: start, dir: (1, 0) });
 
     let path = pathfinder.get_path(ctx.best.unwrap().0);
     let path_coords: HashSet<(i32, i32)> = HashSet::from_iter(path.iter().map(|n| n.pos));
