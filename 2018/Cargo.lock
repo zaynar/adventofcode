@@ -3,6 +3,13 @@
 version = 4
 
 [[package]]
+name = "aocgrid"
+version = "0.1.0"
+dependencies = [
+ "itertools",
+]
+
+[[package]]
 name = "day01"
 version = "0.1.0"
 dependencies = [
@@ -90,6 +97,7 @@ dependencies = [
 name = "day13"
 version = "0.1.0"
 dependencies = [
+ "aocgrid",
  "itertools",
 ]
 
@@ -104,6 +112,7 @@ dependencies = [
 name = "day15"
 version = "0.1.0"
 dependencies = [
+ "aocgrid",
  "itertools",
 ]
 
