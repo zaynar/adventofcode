@@ -127,6 +127,7 @@ dependencies = [
 name = "day17"
 version = "0.1.0"
 dependencies = [
+ "aocgrid",
  "itertools",
 ]
 
@@ -134,6 +135,7 @@ dependencies = [
 name = "day18"
 version = "0.1.0"
 dependencies = [
+ "aocgrid",
  "itertools",
 ]
 
@@ -148,6 +150,7 @@ dependencies = [
 name = "day20"
 version = "0.1.0"
 dependencies = [
+ "aocgrid",
  "itertools",
 ]
 
