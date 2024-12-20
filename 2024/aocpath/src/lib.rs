@@ -40,7 +40,8 @@ where
 
 pub trait Callbacks<T> {
     fn get_neighbours(&mut self, id: &T) -> Vec<(i64, T)>;
-    fn found_path(&mut self, id: &T, cost: i64) -> Result<(), PathError>;
+    // Return false to abort processing this node
+    fn found_path(&mut self, id: &T, cost: i64) -> Result<bool, PathError>;
 }
 
 pub struct Pathfinder<T>
@@ -116,7 +117,9 @@ where
                 .insert(node.id.clone(), HashSet::from([node.pred.clone()]));
         }
 
-        callbacks.found_path(&node.id, node.cost)?;
+        if !callbacks.found_path(&node.id, node.cost)? {
+            return Ok(());
+        }
 
         for (weight, id) in callbacks.get_neighbours(&node.id) {
             let new_node = Node {
@@ -144,7 +147,9 @@ where
             }
         }
 
-        callbacks.found_path(&node.id, node.cost)?;
+        if !callbacks.found_path(&node.id, node.cost)? {
+            return Ok(());
+        }
 
         for (weight, id) in callbacks.get_neighbours(&node.id) {
             let new_node = Node {
@@ -173,7 +178,9 @@ where
     where
         C: Callbacks<T>,
     {
-        callbacks.found_path(&node.id, node.cost)?;
+        if !callbacks.found_path(&node.id, node.cost)? {
+            return Ok(());
+        }
 
         for (weight, id) in callbacks.get_neighbours(&node.id) {
             assert_eq!(weight, 1, "BFS requires unweighted edges");
