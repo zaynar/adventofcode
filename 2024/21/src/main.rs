@@ -3,6 +3,40 @@
 
 use std::collections::{HashMap, HashSet};
 
+fn pad_paths(pad: &HashMap<char, (i32, i32)>, from: char, to: char) -> HashSet<String> {
+    let dir = HashMap::from([
+        ((-1, 0), '<'),
+        ((1, 0), '>'),
+        ((0, -1), '^'),
+        ((0, 1), 'v'),
+    ]);
+
+    let mut ret = HashSet::new();
+
+    let mut open = vec![(from, "".to_owned())];
+    while let Some((cur, path)) = open.pop() {
+
+        if cur == to {
+            ret.insert(path);
+            continue;
+        }
+
+        for other in pad.keys() {
+            if pad[&to].0.abs_diff(pad[other].0) < pad[&to].0.abs_diff(pad[&cur].0) ||
+                pad[&to].1.abs_diff(pad[other].1) < pad[&to].1.abs_diff(pad[&cur].1) {
+                if let Some(d) = dir.get(&(pad[other].0 - pad[&cur].0, pad[other].1 - pad[&cur].1)) {
+                    let mut p2 = path.clone();
+                    p2.push(*d);
+                    open.push((*other, p2));
+                }
+            }
+        }
+
+    }
+
+    ret
+}
+
 fn numpad_paths(from: char, to: char) -> HashSet<String> {
     let pad: HashMap<char, (i32, i32)> = HashMap::from([
         ('7', (0, 0)),
@@ -18,38 +52,7 @@ fn numpad_paths(from: char, to: char) -> HashSet<String> {
         ('A', (2, 3)),
     ]);
 
-    let dir = HashMap::from([
-        ((-1, 0), '<'),
-        ((1, 0), '>'),
-        ((0, -1), '^'),
-        ((0, 1), 'v'),
-    ]);
-
-    let mut ret = HashSet::new();
-
-    let mut open = vec![(from, "".to_owned())];
-    while let Some((cur, path)) = open.pop() {
-
-        if cur == to {
-            ret.insert(path);
-            continue;
-        }
-
-        for other in pad.keys() {
-            if pad[&to].0.abs_diff(pad[other].0) < pad[&to].0.abs_diff(pad[&cur].0) ||
-                pad[&to].1.abs_diff(pad[other].1) < pad[&to].1.abs_diff(pad[&cur].1) {
-                if let Some(d) = dir.get(&(pad[other].0 - pad[&cur].0, pad[other].1 - pad[&cur].1))
-                {
-                    let mut p2 = path.clone();
-                    p2.push(*d);
-                    open.push((*other, p2));
-                }
-            }
-        }
-
-    }
-
-    ret
+    pad_paths(&pad, from, to)
 }
 
 fn dirpad_paths(from: char, to: char) -> HashSet<String> {
@@ -61,38 +64,7 @@ fn dirpad_paths(from: char, to: char) -> HashSet<String> {
         ('>', (2, 1)),
     ]);
 
-    let dir = HashMap::from([
-        ((-1, 0), '<'),
-        ((1, 0), '>'),
-        ((0, -1), '^'),
-        ((0, 1), 'v'),
-    ]);
-
-    let mut ret = HashSet::new();
-
-    let mut open = vec![(from, "".to_owned())];
-    while let Some((cur, path)) = open.pop() {
-
-        if cur == to {
-            ret.insert(path);
-            continue;
-        }
-
-        for other in pad.keys() {
-            if pad[&to].0.abs_diff(pad[other].0) < pad[&to].0.abs_diff(pad[&cur].0) ||
-                pad[&to].1.abs_diff(pad[other].1) < pad[&to].1.abs_diff(pad[&cur].1) {
-                if let Some(d) = dir.get(&(pad[other].0 - pad[&cur].0, pad[other].1 - pad[&cur].1))
-                {
-                    let mut p2 = path.clone();
-                    p2.push(*d);
-                    open.push((*other, p2));
-                }
-            }
-        }
-
-    }
-
-    ret
+    pad_paths(&pad, from, to)
 }
 
 fn expand(paths: &[HashSet<String>], v: String) -> HashSet<String> {
