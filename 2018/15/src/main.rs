@@ -1,5 +1,5 @@
 // Part 1: 47 mins
-// Part 2: 52 mins
+// Part 1+2: 52 mins
 
 use std::collections::{HashSet, VecDeque};
 

@@ -1,5 +1,5 @@
 // Part 1: 16 mins
-// Part 2: 23 mins
+// Part 1+2: 23 mins
 
 use std::collections::{HashMap, HashSet};
 

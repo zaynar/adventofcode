@@ -1,3 +1,6 @@
+// Part 1: 10 mins
+// Part 1+2: 10 mins
+
 use std::collections::{HashSet, VecDeque};
 
 use itertools::Itertools;
