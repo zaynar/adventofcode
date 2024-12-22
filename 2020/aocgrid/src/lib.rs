@@ -1,5 +1,7 @@
 use std::fmt;
 
+use itertools::Itertools;
+
 #[derive(Clone, Hash, PartialEq, Eq)]
 pub struct Grid<T> {
     width: i32,
@@ -139,6 +141,35 @@ where
                 f(x, y, self.get_mut(x, y));
             }
         }
+    }
+}
+
+impl<T> Grid<T>
+where
+    T: Sized + Clone,
+{
+    pub fn flipv(&self) -> Self {
+        let storage = (0..self.height).map(|y|
+            (0..self.width).map(|x|
+                self.get(x, self.height - 1 - y).clone()
+        ).collect::<Vec<T>>()).concat();
+        Self { width: self.width, height: self.height, storage }
+    }
+
+    pub fn fliph(&self) -> Self {
+        let storage = (0..self.height).map(|y|
+            (0..self.width).map(|x|
+                self.get(self.width - 1 - x, y).clone()
+        ).collect::<Vec<T>>()).concat();
+        Self { width: self.width, height: self.height, storage }
+    }
+
+    pub fn rot90(&self) -> Self {
+        let storage = (0..self.width).map(|y|
+            (0..self.height).map(|x|
+                self.get(y, self.height - 1 - x).clone()
+        ).collect::<Vec<T>>()).concat();
+        Self { width: self.height, height: self.width, storage }
     }
 }
 
