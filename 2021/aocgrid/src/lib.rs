@@ -132,7 +132,18 @@ where
         }
     }
 
-    pub fn for_each<F>(&mut self, mut f: F)
+    pub fn for_each<F>(&self, mut f: F)
+    where
+        F: FnMut(i32, i32, &T),
+    {
+        for y in 0..self.height {
+            for x in 0..self.width {
+                f(x, y, self.get(x, y));
+            }
+        }
+    }
+
+    pub fn for_each_mut<F>(&mut self, mut f: F)
     where
         F: FnMut(i32, i32, &mut T),
     {
