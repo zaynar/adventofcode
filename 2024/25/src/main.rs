@@ -1,3 +1,5 @@
+// Part 1: 7 mins
+
 use aocgrid::Grid;
 use itertools::Itertools;
 

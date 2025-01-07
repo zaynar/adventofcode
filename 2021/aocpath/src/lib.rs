@@ -18,6 +18,7 @@ struct Node<T> {
     id: T,
     pred: Option<T>,
     cost: i64,
+    heuristic: i64,
 }
 
 impl<T> Ord for Node<T>
@@ -25,7 +26,7 @@ where
     T: Eq + Ord,
 {
     fn cmp(&self, other: &Self) -> Ordering {
-        (other.cost, &self.id).cmp(&(self.cost, &other.id))
+        (other.cost + other.heuristic, &self.id).cmp(&(self.cost + self.heuristic, &other.id))
     }
 }
 
@@ -42,6 +43,10 @@ pub trait Callbacks<T> {
     fn get_neighbours(&mut self, id: &T) -> Vec<(i64, T)>;
     // Return false to abort processing this node
     fn found_path(&mut self, id: &T, cost: i64) -> Result<bool, PathError>;
+
+    fn heuristic(&mut self, id: &T) -> i64 {
+        0
+    }
 }
 
 pub struct Pathfinder<T>
@@ -80,6 +85,7 @@ where
             id: start_node.clone(),
             pred: None,
             cost: 0,
+            heuristic: 0,
         };
         self.open.push(start.clone());
         self.open_deq.push_back(start.clone());
@@ -126,6 +132,7 @@ where
                 id,
                 pred: Some(node.id.clone()),
                 cost: node.cost + weight,
+                heuristic: 0,
             };
 
             if self.seen.insert(new_node.clone()) {
@@ -156,6 +163,47 @@ where
                 id,
                 pred: Some(node.id.clone()),
                 cost: node.cost + weight,
+                heuristic: 0,
+            };
+
+            // Only push nodes if they're the best we've seen so far
+            // (but we need to check them again before found_path() to
+            // avoid spurious callbacks, since superseded paths won't get
+            // deleted from the heap)
+            match self.dist.get(&new_node.id) {
+                Some(&dist) if dist <= new_node.cost => (),
+                _ => {
+                    self.dist.insert(new_node.id.clone(), new_node.cost);
+                    self.open.push(new_node);
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    // XXX: this probably isn't correct
+    fn step_astar<C>(&mut self, node: Node<T>, callbacks: &mut C) -> Result<(), PathError>
+    where
+        C: Callbacks<T>,
+    {
+        // Skip superseded paths
+        if let Some(&dist) = self.dist.get(&node.id) {
+            if dist < node.cost {
+                return Ok(());
+            }
+        }
+
+        if !callbacks.found_path(&node.id, node.cost)? {
+            return Ok(());
+        }
+
+        for (weight, id) in callbacks.get_neighbours(&node.id) {
+            let new_node = Node {
+                id,
+                pred: Some(node.id.clone()),
+                cost: node.cost + weight,
+                heuristic: callbacks.heuristic(&node.id),
             };
 
             // Only push nodes if they're the best we've seen so far
@@ -188,6 +236,7 @@ where
                 id: id.clone(),
                 pred: Some(node.id.clone()),
                 cost: node.cost + 1,
+                heuristic: 0,
             };
             self.dist.entry(new_node.id.clone()).or_insert_with(|| {
                 let c = new_node.cost;
@@ -219,6 +268,18 @@ where
 
         while let Some(node) = self.open.pop() {
             self.step_dijkstra(node, callbacks)?;
+        }
+        Err(PathError::Exhausted)
+    }
+
+    pub fn astar<C>(&mut self, callbacks: &mut C, start_node: T) -> Result<(), PathError>
+    where
+        C: Callbacks<T>,
+    {
+        self.start(start_node);
+
+        while let Some(node) = self.open.pop() {
+            self.step_astar(node, callbacks)?;
         }
         Err(PathError::Exhausted)
     }
