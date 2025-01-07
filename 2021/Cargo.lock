@@ -217,12 +217,14 @@ name = "day24"
 version = "0.1.0"
 dependencies = [
  "itertools",
+ "rayon",
 ]
 
 [[package]]
 name = "day25"
 version = "0.1.0"
 dependencies = [
+ "aocgrid",
  "itertools",
 ]
 
