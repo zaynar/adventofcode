@@ -1,19 +1,28 @@
+// Part 1: 2 mins
+// Part 1+2: 5 mins
+
+use std::collections::HashSet;
+
+use itertools::Itertools;
+
 fn run(title: &str, input: &str) {
-    let data: Vec<Vec<i32>> = input
-        .lines()
-        .map(|line| {
-            line.split_ascii_whitespace()
-                .map(|n| str::parse(n).unwrap())
-                .collect()
-        })
-        .collect();
+    for (i, (a, b, c, d)) in input.trim().chars().tuple_windows().enumerate() {
+        if HashSet::from([a, b, c, d]).len() == 4 {
+            println!("{} part 1: {}", title, i + 4);
+            break;
+        }
+    }
 
-    println!("{} part 1: {}", title, "TODO");
-
-    println!("{} part 2: {}", title, "TODO");
+    for (i, cs) in input.trim().chars().collect_vec().windows(14).enumerate() {
+        if HashSet::<char>::from_iter(cs.iter().copied()).len() == 14 {
+            println!("{} part 2: {}", title, i + 14);
+            break;
+        }
+    }
 }
 
-const INPUT_DEMO: &str = "";
+const INPUT_DEMO: &str = "mjqjpqmgbljsphdztnvjfqwrcgsmlb
+";
 
 fn main() {
     run("demo", INPUT_DEMO);
