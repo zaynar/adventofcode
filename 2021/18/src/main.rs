@@ -1,5 +1,5 @@
 // Part 1: 59 mins
-// Part 2: 61 mins
+// Part 1+2: 61 mins
 
 use std::fmt;
 
